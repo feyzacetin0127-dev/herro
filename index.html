@@ -560,16 +560,20 @@ function lbOyunaGec(d){
                 turBitti=true; render(); return;
             }
             render();
-            // el_bekleniyor: kartları göster, 1.5s sonra yerde'yi temizle ve tekrar render et
+            // el_bekleniyor: kartları göster, 1.5s sonra yerde'yi temizle
             if(d2.durum==='el_bekleniyor'){
                 setTimeout(function(){
                     yerde=[];
                     bSeri=null;
+                    bekleniyor=false;
                     render();
+                    // Host bu noktada zaten mpElBitti çalıştırıyor, bot kontrolü oradan devam eder
                 }, 1500);
                 return;
             }
             // Bot kontrolü — sadece host çalıştırır
+            bekleniyor=false;
+            donguCalisiyor=false;
             if(OY[0]===BENIM_ADIM) setTimeout(mpBotKontrol,600);
         }).subscribe();
 
@@ -637,7 +641,7 @@ async function mpBotOyna(){
         bekleniyor=true;
         // 4. kartı herkese göster
         await sb.from('oyun').update({eller:eller, yerde:yerde, b_seri:bSeri, durum:'el_bekleniyor'}).eq('id',odaId);
-        setTimeout(function(){ mpElBitti(); }, 1200);
+        setTimeout(function(){ mpElBitti(); }, 1300);
     } else {
         sira = OY[(OY.indexOf(bot)+1)%4];
         var guncel = {eller:eller, yerde:yerde, b_seri:bSeri, sira:sira};
@@ -646,6 +650,7 @@ async function mpBotOyna(){
 }
 
 async function mpElBitti(){
+    if(OY[0]!==BENIM_ADIM) return; // Sadece host çalıştırır
     var kaz = mpElKazanan();
     alinan[kaz]=(alinan[kaz]||0)+1;
     log('── El '+elNo+' kazananı: '+kaz+' (toplam: '+alinan[kaz]+') ──');
@@ -746,7 +751,7 @@ async function mpSendIhale(isH){
     var yasak=(sira===OY[ebeIdx])?(13-ihaleToplam):-1;
     var errDiv=document.getElementById('bErr');
     function showE(msg){if(errDiv){errDiv.className='errmsg';errDiv.textContent=msg;}}
-    if(!isH&&val!==0&&(val<3||val>13)){showE('1-2 yasak! 0 veya 3-13 girin.');return;}
+    if(!isH&&val!==0&&(val<3||val>13)){showE('1 ve 2 yasak! 0 veya 3-13 girin.');return;}
     if(!isH&&sira===OY[ebeIdx]&&val===yasak&&yasak>=0){showE('Yasak! İhale toplamı 13 olamaz!');return;}
     if(!isH&&sira===OY[ebeIdx]&&ihaleToplam===0&&val===0){showE('Açmak zorundasın!');return;}
     ihale[sira]=val; ihaleToplam+=val; herro[sira]=isH;
@@ -785,12 +790,13 @@ async function mpCardClick(e){
         // 4. kartı herkese göster
         await sb.from('oyun').update({eller:eller,yerde:yerde,b_seri:bSeri,durum:'el_bekleniyor'}).eq('id',odaId);
         // Host el sonucunu hesaplar
+        // Sadece host el sonucunu hesaplar
         if(OY[0]===BENIM_ADIM){
-            setTimeout(function(){ mpElBitti(); },1200);
+            setTimeout(function(){ mpElBitti(); },1300);
         }
     } else {
         sira=OY[(OY.indexOf(BENIM_ADIM)+1)%4];
-        await sb.from('oyun').update({eller:eller,yerde:yerde,b_seri:bSeri,sira:sira}).eq('id',odaId);
+        await sb.from('oyun').update({eller:eller,yerde:yerde,b_seri:bSeri,sira:sira,durum:'basliyor'}).eq('id',odaId);
     }
     render();
 }
@@ -1588,7 +1594,7 @@ function sendIhale(isH){
     var yasak=(sira===OY[ebeIdx])?(13-ihaleToplam):-1;
     var errDiv=document.getElementById('bErr');
     function showE(msg){if(errDiv){errDiv.className='errmsg';errDiv.textContent=msg;}}
-    if(!isH&&val!==0&&(val<3||val>13)){showE('1-2 yasak! 0 veya 3-13 girin.');return;}
+    if(!isH&&val!==0&&(val<3||val>13)){showE('1 ve 2 yasak! 0 veya 3-13 girin.');return;}
     if(!isH&&sira===OY[ebeIdx]&&val===yasak&&yasak>=0){showE('Yasak! İhale toplamı 13 olamaz!');return;}
     if(!isH&&sira===OY[ebeIdx]&&ihaleToplam===0&&val===0){showE('Açmak zorundasın!');return;}
     ihale[sira]=val; ihaleToplam+=val; herro[sira]=isH;
