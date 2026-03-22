@@ -302,9 +302,12 @@ async function beklemeCek(){
 
 async function oyunuBaslat(data){
     var oyuncular=data.oyuncular;
-    if(oyuncular.some(function(o){return o.startsWith('⏳');})){
-        alert('Tüm oyuncular henüz katılmadı!'); return;
-    }
+    // Boş slotları botlarla doldur
+    var botSayac=1;
+    oyuncular=oyuncular.map(function(o){
+        if(o.startsWith('⏳')){var b='🤖Bot'+botSayac++;return b;}
+        return o;
+    });
     var ebeIdx=Math.floor(Math.random()*4);
     var deste=[];
     SUITS.forEach(function(s){Object.keys(DS).forEach(function(r){deste.push([s,r]);});});
