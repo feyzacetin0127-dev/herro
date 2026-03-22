@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Herro Oyunu</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { margin: 0; padding: 0; background: linear-gradient(135deg, #0a5f2a, #0a3a1a); font-family: 'Segoe UI', Arial, sans-serif; color: #eee; min-height: 100dvh; user-select: none; -webkit-user-select: none; }
+        input, select { user-select: text !important; -webkit-user-select: text !important; touch-action: manipulation; }
+        button { touch-action: manipulation; cursor: pointer; }
+        .screen { display: none; flex-direction: column; align-items: center; justify-content: center; min-height: 100dvh; padding: 24px 16px; }
+        .screen.active { display: flex; }
+        .title { font-size: clamp(28px,8vw,44px); font-weight: 900; color: #ffd966; margin-bottom: 6px; letter-spacing: 3px; text-shadow: 0 2px 12px #0008; }
+        .sub { font-size: clamp(13px,3.5vw,17px); color: #b8c8b0; margin-bottom: 24px; text-align: center; }
+        .card-box { background: rgba(0,0,0,0.4); border: 2px solid #4a7a4a; border-radius: 18px; padding: 20px; width: 100%; max-width: 400px; margin-bottom: 16px; }
+        .field-label { font-size: 13px; color: #ffd966; font-weight: 700; margin-bottom: 6px; }
+        .field-input { width: 100%; background: rgba(255,255,255,0.1); border: 1px solid #ffd96660; border-radius: 8px; padding: 10px 14px; color: #fff; font-size: 16px; font-weight: 700; margin-bottom: 14px; }
+        .field-input::placeholder { color: #666; font-weight: 400; }
+        .field-input:focus { outline: none; border-color: #ffd966; }
+        .big-btn { background: #2a8a3a; border: 2px solid #4aaa5a; border-radius: 50px; padding: 14px; font-size: clamp(15px,4.5vw,20px); font-weight: 900; color: #d4f0d0; width: 100%; max-width: 400px; cursor: pointer; box-shadow: 0 4px 18px #0a5f2a88; margin-bottom: 10px; }
+        .big-btn:active { transform: scale(0.96); }
+        .big-btn:disabled { background: #1a5a2a; color: #5a8a6a; pointer-events: none; }
+        .sec-btn { background: rgba(0,0,0,0.4); border: 2px solid #ffd96640; border-radius: 50px; padding: 10px; font-size: clamp(13px,4vw,17px); font-weight: 700; color: #ffd966; width: 100%; max-width: 400px; cursor: pointer; margin-bottom: 10px; }
+        .oda-kodu-display { font-size: clamp(32px,10vw,52px); font-weight: 900; color: #ffd966; letter-spacing: 8px; text-align: center; background: rgba(0,0,0,0.4); border-radius: 14px; padding: 16px; width: 100%; max-width: 400px; margin-bottom: 12px; }
+        .oyuncu-listesi { width: 100%; max-width: 400px; margin-bottom: 16px; }
+        .oyuncu-item { display: flex; align-items: center; gap: 10px; background: rgba(0,0,0,0.3); border-radius: 10px; padding: 10px 14px; margin-bottom: 8px; }
+        .oyuncu-renk { width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0; }
+        .oyuncu-adi { font-size: 15px; font-weight: 700; }
+        .oyuncu-hazir { margin-left: auto; font-size: 12px; }
+        .bekleme-info { font-size: 14px; color: #b8c8b0; text-align: center; margin-bottom: 16px; }
+        #game-screen { display: none; }
+        #game-screen.active { display: block; }
+        .game-container { max-width: 700px; margin: 0 auto; background: rgba(0,0,0,0.4); border-radius: 20px; padding: 10px; min-height: 100dvh; }
+        .top-bar { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 6px; margin-bottom: 8px; }
+        .game-title { font-size: clamp(16px,5vw,22px); font-weight: 900; color: #ffd966; }
+        .top-badges { display: flex; gap: 6px; flex-wrap: wrap; }
+        .badge { background: rgba(0,0,0,0.5); border: 1px solid #ffd96660; border-radius: 20px; padding: 3px 10px; font-size: clamp(10px,3vw,13px); color: #ffd966; font-weight: bold; white-space: nowrap; }
+        .my-turn-banner { background: #2a8a3a; border: 2px solid #4aaa5a; border-radius: 12px; padding: 8px 16px; text-align: center; font-size: clamp(14px,4vw,18px); font-weight: 900; color: #d4f0d0; margin-bottom: 8px; animation: pulse 1s infinite; }
+        .wait-banner { background: rgba(0,0,0,0.4); border: 2px solid #ffd96640; border-radius: 12px; padding: 8px 16px; text-align: center; font-size: clamp(13px,3.5vw,16px); color: #b8c8b0; margin-bottom: 8px; }
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.7} }
+        @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.35} }
+        .score-table { background: #1e2a1f; border-radius: 14px; padding: 5px; margin-bottom: 8px; }
+        .score-row { display: flex; background: #2a3a2a; margin: 2px 0; border-radius: 8px; overflow: hidden; }
+        .score-row.hdr { background: #1e3a1e; }
+        .score-row.act { background: #2a4a2a; border: 1px solid #ffd96640; }
+        .sc { flex:1; padding: clamp(3px,1.5vw,6px) clamp(2px,1vw,4px); text-align: center; font-weight: bold; font-size: clamp(10px,2.8vw,13px); border-right: 1px solid #4a6a3a40; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .sc:last-child { border-right: none; }
+        .score-row.hdr .sc { color: #ffd966; font-size: clamp(9px,2.3vw,11px); }
+        .sc.pl { flex: 1.4; text-align: left; padding-left: 5px; }
+        .table-scene { margin-bottom: 8px; width: 100%; max-width: 520px; margin-left: auto; margin-right: auto; }
+        .outer-seat-row { display: flex; justify-content: center; align-items: center; width: 100%; padding: 8px 0; }
+        .outer-mid-row { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; }
+        .felt-wrap { flex: 1; min-width: 0; }
+        .felt { background: radial-gradient(ellipse at center, #2e7a3a 0%, #1a5228 55%, #0e3318 100%); border-radius: 80px; border: 4px solid #4a8a4a; box-shadow: inset 0 4px 20px rgba(0,0,0,0.5), 0 6px 24px rgba(0,0,0,0.5), 0 0 0 5px #1a4a1a; position: relative; height: 180px; min-height: 180px; max-height: 180px; display: flex; align-items: center; justify-content: center; overflow: visible; }
+        .played-area { display: grid; grid-template-columns: 1fr 1fr 1fr; grid-template-rows: 1fr 1fr 1fr; width: 170px; height: 150px; flex-shrink: 0; }
+        .felt-center-info { grid-column: 2; grid-row: 2; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .felt-koz-sym { font-size: clamp(20px,6vw,30px); line-height: 1; }
+        .felt-koz-lbl { font-size: clamp(7px,1.8vw,9px); color: #ffd966aa; font-weight: bold; }
+        .felt-card-slot { display: flex; align-items: center; justify-content: center; }
+        .felt-card-slot.top-slot { grid-column: 2; grid-row: 1; align-items: flex-start; }
+        .felt-card-slot.left-slot { grid-column: 1; grid-row: 2; justify-content: flex-start; }
+        .felt-card-slot.right-slot { grid-column: 3; grid-row: 2; justify-content: flex-end; }
+        .felt-card-slot.bottom-slot { grid-column: 2; grid-row: 3; align-items: flex-end; }
+        .played-card { background: #fef7e0; border-radius: 8px; border: 1.5px solid #b8860b; box-shadow: -1px 2px 5px rgba(0,0,0,0.5); padding: 3px 6px; text-align: center; animation: cin 0.2s ease; min-width: 34px; }
+        @keyframes cin { from{opacity:0;transform:scale(0.7)} to{opacity:1;transform:scale(1)} }
+        .pc-val { font-size: clamp(14px,4.5vw,20px); font-weight: 900; line-height: 1; }
+        .pc-koz-tag { font-size: 7px; background: #ff9800; color: #111; border-radius: 10px; padding: 0 3px; font-weight: bold; }
+        .seat-box { background: rgba(0,0,0,0.55); border: 2px solid #4a7a4a; border-radius: 14px; padding: 6px 10px; text-align: center; width: 84px; min-width: 84px; max-width: 84px; min-height: 72px; flex-shrink: 0; }
+        .seat-box.ebe-seat { border-top: 3px solid #cc4444; }
+        .seat-box.bot-seat { border-style: dashed; opacity: 0.8; }
+        .seat-name { font-size: clamp(10px,3vw,14px); font-weight: 800; color: #d4c99a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .seat-name.you { color: #ffd966; }
+        .seat-koz { font-size: clamp(14px,4vw,20px); font-weight: 900; line-height: 1.1; }
+        .seat-info { font-size: clamp(8px,2vw,10px); color: #8aaa8a; margin-top: 1px; }
+        .seat-turn-arrow { display: block; text-align: center; font-size: 14px; color: #ffd966; line-height: 1; margin-bottom: 3px; animation: blink 0.8s infinite; }
+        .my-cards-area { width: 100%; max-width: 520px; margin: 6px auto 0; padding: 0 92px; }
+        .cards-wrap-single { display: flex; flex-wrap: nowrap; overflow: visible; padding: 4px 2px 10px; }
+        .cards-wrap-single .card { flex: 0 0 auto; margin-right: -18px; transition: transform 0.15s; position: relative; z-index: 10; }
+        .cards-wrap-single .card:last-child { margin-right: 0; }
+        .cards-wrap-single .card:hover { transform: translateY(-10px); z-index: 20; margin-right: 2px; }
+        .card { background: white; border-radius: 10px; border: 2px solid #b8860b; box-shadow: -2px 3px 6px rgba(0,0,0,0.45); cursor: pointer; min-width: 48px; min-height: 62px; display: flex; flex-direction: column; align-items: stretch; justify-content: space-between; padding: 3px 4px; position: relative; transition: transform 0.1s; }
+        .card:active { transform: scale(0.91) translateY(2px); }
+        .card.valid-card { background: linear-gradient(160deg,#fffde4,#fff8c0); border-color: #ff9800; box-shadow: 0 0 0 2.5px #ff980070, -2px 3px 6px rgba(0,0,0,0.4); }
+        .card.invalid-card { opacity: 0.38; cursor: not-allowed; }
+        .card-corner { font-size: clamp(11px,3.2vw,14px); font-weight: 900; line-height: 1.05; }
+        .card-corner.bot { transform: rotate(180deg); }
+        .card-center { font-size: clamp(20px,6vw,28px); line-height: 1; text-align: center; flex: 1; display: flex; align-items: center; justify-content: center; }
+        .card-koz-dot { position: absolute; top: -5px; left: -5px; width: 14px; height: 14px; background: #ff9800; border-radius: 50%; border: 1.5px solid white; font-size: 8px; display: flex; align-items: center; justify-content: center; color: white; font-weight: 900; }
+        .red-suit { color: #d42020; }
+        .black-suit { color: #111; }
+        .input-area { background: #0f2f1a; border-radius: 18px; padding: 12px 14px; margin-bottom: 8px; text-align: center; }
+        .ititle { font-size: clamp(13px,4vw,17px); font-weight: bold; color: #ffd966; margin-bottom: 8px; }
+        .bid-row { display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap; margin: 8px 0; }
+        .bid-num { font-size: clamp(20px,6vw,28px); font-weight: 900; padding: 8px 12px; border-radius: 12px; border: 2px solid #ffd966; background: rgba(0,0,0,0.6); color: #ffd966; width: 80px; text-align: center; -webkit-appearance: none; }
+        .bid-num:focus { outline: none; border-color: #ffe599; }
+        .btn { background: #d4af37; border: none; padding: clamp(8px,3vw,12px) clamp(14px,4vw,22px); font-size: clamp(13px,3.5vw,16px); font-weight: 900; border-radius: 50px; color: #1f3a1f; min-height: 44px; min-width: 80px; }
+        .btn:active { transform: scale(0.95); }
+        .btn.fire { background: #e07020; color: #fff; }
+        .btn.next { background: #2a8a3a; color: #d4f0d0; width: 100%; font-size: clamp(14px,4.5vw,19px); padding: 14px; }
+        .rhint { font-size: clamp(11px,3vw,14px); background: rgba(0,0,0,0.4); border-radius: 10px; padding: 6px 10px; margin-top: 6px; color: #b8c8b0; line-height: 1.4; }
+        .errmsg { background: #aa2e2ecc; color: #ffcccc; border-radius: 10px; padding: 6px 12px; font-size: clamp(11px,3vw,14px); margin-top: 6px; display: inline-block; }
+        .warnmsg { background: rgba(200,130,0,0.6); color: #fff3c4; border-radius: 10px; padding: 5px 12px; font-size: clamp(11px,3vw,13px); margin-top: 6px; display: inline-block; }
+        .waitlbl { font-size: clamp(14px,4vw,18px); color: #ffd966; padding: 8px 0; }
+        .winban { background: #ffd700; color: #1a3a1a; border-radius: 50px; padding: 5px 16px; font-weight: 900; font-size: clamp(12px,3.5vw,16px); display: inline-block; animation: wp 0.4s ease; position: absolute; bottom: 50%; left: 50%; transform: translateX(-50%) translateY(50%); z-index: 10; white-space: nowrap; }
+        @keyframes wp { from{transform:translateX(-50%) translateY(50%) scale(0.4);opacity:0} to{transform:translateX(-50%) translateY(50%) scale(1);opacity:1} }
+        .dbg-panel { background: #1a1a2e; border-radius: 14px; border: 1px solid #ffd96630; overflow: hidden; margin-top: 8px; }
+        .dbg-hdr { padding: 5px 8px; background: #0f0f1a; }
+        .dbg-lbl { font-size: 11px; color: #ffd96680; }
+        .dbg-log { max-height: 80px; overflow-y: auto; padding: 5px 8px; font-family: monospace; font-size: 10px; }
+        .dbg-log p { margin: 2px 0; color: #88cc88; border-left: 2px solid #ffd96640; padding-left: 6px; line-height: 1.4; }
+        .dbg-log p.elog { color: #ff8888; }
+        .dbg-log p.sep { color: #ffd966; font-weight: bold; }
+        .renkler { display: flex; gap: 6px; justify-content: center; margin-bottom: 8px; }
+        .renk-item { width: 12px; height: 12px; border-radius: 50%; }
+    </style>
+</head>
+<body>
+
+<!-- MENÜ -->
+<div id="menu-screen" class="screen active">
+    <div class="title">♠ HERRO ♥</div>
+    <div class="sub">Online Kart Oyunu</div>
+    <button class="big-btn" id="yeniOdaBtn">🎮 Yeni Oda Aç</button>
+    <button class="sec-btn" id="odayaKatilBtn">🔗 Odaya Katıl</button>
+</div>
+
+<!-- YENİ ODA -->
+<div id="yeni-screen" class="screen">
+    <div class="title">♠ HERRO ♥</div>
+    <div class="sub">Yeni Oda Aç</div>
+    <div class="card-box">
+        <div class="field-label">Adın</div>
+        <input class="field-input" id="yeniAd" placeholder="Adını gir..." maxlength="10">
+        <div class="field-label">Kaç gerçek oyuncu?</div>
+        <select class="field-input" id="oyuncuSayisi">
+            <option value="2">2 Gerçek + 2 Bot</option>
+            <option value="3">3 Gerçek + 1 Bot</option>
+            <option value="4" selected>4 Gerçek Oyuncu</option>
+        </select>
+    </div>
+    <button class="big-btn" id="odaOlusturBtn">ODA OLUŞTUR</button>
+    <button class="sec-btn" id="yeniGeriBtn">← Geri</button>
+    <div id="yeniHata" style="color:#ff8888;font-size:14px;margin-top:8px;"></div>
+</div>
+
+<!-- ODAYA KATIL -->
+<div id="katil-screen" class="screen">
+    <div class="title">♠ HERRO ♥</div>
+    <div class="sub">Odaya Katıl</div>
+    <div class="card-box">
+        <div class="field-label">Adın</div>
+        <input class="field-input" id="katilAd" placeholder="Adını gir..." maxlength="10">
+        <div class="field-label">Oda Kodu</div>
+        <input class="field-input" id="katilKod" placeholder="5 haneli kod..." maxlength="5" style="text-transform:uppercase;letter-spacing:4px;font-size:22px;">
+    </div>
+    <button class="big-btn" id="katilBtn">KATIL</button>
+    <button class="sec-btn" id="katilGeriBtn">← Geri</button>
+    <div id="katilHata" style="color:#ff8888;font-size:14px;margin-top:8px;"></div>
+</div>
+
+<!-- BEKLEME -->
+<div id="bekleme-screen" class="screen">
+    <div class="title">♠ HERRO ♥</div>
+    <div class="sub">Arkadaşlarına bu kodu gönder!</div>
+    <div class="oda-kodu-display" id="odaKoduDisplay">-----</div>
+    <div class="oyuncu-listesi" id="oyuncuListesi"></div>
+    <div class="bekleme-info" id="beklemeInfo">Bekleniyor...</div>
+    <button class="big-btn" id="oyunuBaslatBtn" style="display:none;">▶ OYUNU BAŞLAT</button>
+</div>
+
+<!-- OYUN -->
+<div id="game-screen">
+<div class="game-container">
+    <div class="top-bar">
+        <div class="game-title">♠ HERRO ♥</div>
+        <div class="top-badges">
+            <div class="badge" id="turn-indicator">Tur 1/12</div>
+            <div class="badge" id="bid-total">İhale: 0</div>
+            <div class="badge" id="oda-badge">-</div>
+        </div>
+    </div>
+    <div id="turn-banner"></div>
+    <div class="score-table" id="score-panel"></div>
+    <div class="table-scene" id="table-scene"></div>
+    <div class="input-area" id="input-panel"></div>
+    <div class="dbg-panel">
+        <div class="dbg-hdr"><span class="dbg-lbl">OYUN LOGU</span></div>
+        <div class="dbg-log" id="logArea"></div>
+    </div>
+</div>
+</div>
+
+<script>
+var SUPA_URL = 'https://udjibpmemhuepwosyakt.supabase.co';
+var SUPA_KEY = 'sb_publishable_zHRssYgNopNSgKV818RLZQ_mMygg4CO';
+var sb = supabase.createClient(SUPA_URL, SUPA_KEY);
+
+var RS = {Maca:'♠',Karo:'♦',Sinek:'♣',Kupa:'♥'};
+var DS = {'2':0,'3':1,'4':2,'5':3,'6':4,'7':5,'8':6,'9':7,'10':8,'J':9,'Q':10,'K':11,'A':12};
+var SUITS = ['Maca','Karo','Sinek','Kupa'];
+var RENKLER = ['#ffd966','#66aaff','#ff6666','#66ffaa'];
+
+var odaId='', benimAdim='', benimIdx=-1;
+var oyunDurumu=null, subscription=null, islemde=false, hataMesaji='';
+var debugLogs=[];
+
+function showScreen(id){
+    document.querySelectorAll('.screen').forEach(function(s){s.classList.remove('active');});
+    document.getElementById('game-screen').style.display='none';
+    if(id==='game-screen'){
+        document.getElementById('game-screen').style.display='block';
+    } else {
+        var el=document.getElementById(id);
+        if(el) el.classList.add('active');
+    }
+}
+
+document.getElementById('yeniOdaBtn').onclick=function(){showScreen('yeni-screen');};
+document.getElementById('odayaKatilBtn').onclick=function(){showScreen('katil-screen');};
+document.getElementById('yeniGeriBtn').onclick=function(){showScreen('menu-screen');};
+document.getElementById('katilGeriBtn').onclick=function(){showScreen('menu-screen');};
+
+document.getElementById('odaOlusturBtn').onclick=async function(){
+    var ad=document.getElementById('yeniAd').value.trim();
+    var sayi=parseInt(document.getElementById('oyuncuSayisi').value);
+    if(!ad){document.getElementById('yeniHata').textContent='Adını gir!';return;}
+    benimAdim=ad; benimIdx=0;
+    var kod=Math.random().toString(36).substring(2,7).toUpperCase();
+    odaId=kod;
+    var botSayisi=4-sayi;
+    var oyuncular=[ad];
+    for(var i=0;i<botSayisi;i++) oyuncular.push('🤖Bot'+(i+1));
+    // Kalan gerçek oyuncu slotları boş bırak
+    for(var i=0;i<sayi-1;i++) oyuncular.push('⏳Bekleniyor');
+
+    var {error}=await sb.from('oyun').insert({
+        id:kod, oyuncular:oyuncular, eller:{}, kozlar:{}, ihale:{}, herro:{}, alinan:{}, skorlar:{},
+        ebe_idx:0, buyuk_tur:1, sira:'', b_seri:'', yerde:[], ihale_as:false, oyun_aktif:false,
+        tur_bitti:false, ihale_toplam:0, el_no:0, durum:'bekleniyor'
+    });
+    if(error){document.getElementById('yeniHata').textContent='Hata: '+error.message;return;}
+    showScreen('bekleme-screen');
+    document.getElementById('odaKoduDisplay').textContent=kod;
+    document.getElementById('oda-badge').textContent='Oda: '+kod;
+    abone();
+    beklemeCek();
+};
+
+document.getElementById('katilBtn').onclick=async function(){
+    var ad=document.getElementById('katilAd').value.trim();
+    var kod=document.getElementById('katilKod').value.trim().toUpperCase();
+    var hataDiv=document.getElementById('katilHata');
+    hataDiv.textContent='';
+    if(!ad||!kod){hataDiv.textContent='Ad ve kod gerekli!';return;}
+    var {data,error}=await sb.from('oyun').select('*').eq('id',kod).single();
+    if(error||!data){hataDiv.textContent='Oda bulunamadı!';return;}
+    if(data.durum!=='bekleniyor'){hataDiv.textContent='Oyun zaten başlamış!';return;}
+    var oyuncular=data.oyuncular||[];
+    var slotIdx=oyuncular.findIndex(function(o){return o.startsWith('⏳');});
+    if(slotIdx===-1){hataDiv.textContent='Oda dolu!';return;}
+    if(oyuncular.filter(function(o){return !o.startsWith('🤖')&&!o.startsWith('⏳');}).includes(ad)){hataDiv.textContent='Bu isim alınmış!';return;}
+    oyuncular[slotIdx]=ad;
+    benimAdim=ad; benimIdx=slotIdx; odaId=kod;
+    var {error:e2}=await sb.from('oyun').update({oyuncular:oyuncular}).eq('id',kod);
+    if(e2){hataDiv.textContent='Hata: '+e2.message;return;}
+    showScreen('bekleme-screen');
+    document.getElementById('odaKoduDisplay').textContent=kod;
+    document.getElementById('oda-badge').textContent='Oda: '+kod;
+    abone();
+    beklemeCek();
+};
+
+async function beklemeCek(){
+    var {data}=await sb.from('oyun').select('*').eq('id',odaId).single();
+    if(!data) return;
+    if(data.oyun_aktif){showScreen('game-screen');oyunDurumu=data;render();return;}
+    var oyuncular=data.oyuncular||[];
+    var liste=document.getElementById('oyuncuListesi');
+    liste.innerHTML=oyuncular.map(function(o,i){
+        var isBot=o.startsWith('🤖');
+        var isBekle=o.startsWith('⏳');
+        var isMe=(o===benimAdim);
+        var renk=RENKLER[i]||'#888';
+        var durum=isBot?'🤖 BOT':isBekle?'⌛ Bekleniyor':isMe?'✅ Sen':'✅ Hazır';
+        var renkStyle=isBekle?'#888':renk;
+        return '<div class="oyuncu-item">'
+            +'<div class="oyuncu-renk" style="background:'+renkStyle+'"></div>'
+            +'<div class="oyuncu-adi">'+o+'</div>'
+            +'<div class="oyuncu-hazir" style="color:'+(isBot?'#888':isBekle?'#888':'#66ff88')+'">'+durum+'</div>'
+            +'</div>';
+    }).join('');
+    var hazir=oyuncular.filter(function(o){return !o.startsWith('⏳');}).length;
+    document.getElementById('beklemeInfo').textContent=hazir+'/4 oyuncu hazır. Oda sahibi başlatabilir.';
+    if(oyuncular[0]===benimAdim){
+        var btn=document.getElementById('oyunuBaslatBtn');
+        btn.style.display='block';
+        btn.onclick=function(){oyunuBaslat(data);};
+    }
+}
+
+async function oyunuBaslat(data){
+    var oyuncular=data.oyuncular;
+    if(oyuncular.some(function(o){return o.startsWith('⏳');})){
+        alert('Tüm oyuncular henüz katılmadı!'); return;
+    }
+    var ebeIdx=Math.floor(Math.random()*4);
+    var deste=[];
+    SUITS.forEach(function(s){Object.keys(DS).forEach(function(r){deste.push([s,r]);});});
+    for(var i=deste.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=deste[i];deste[i]=deste[j];deste[j]=t;}
+    var eller={},kozlar={},skorlar={},alinan={};
+    for(var i=0;i<4;i++){
+        var o=oyuncular[i];
+        kozlar[o]=SUITS[i%4];
+        eller[o]=sirala(deste.slice(i*13,i*13+13),kozlar[o]);
+        skorlar[o]=0; alinan[o]=0;
+    }
+    var ilkSira=oyuncular[(ebeIdx+1)%4];
+    await sb.from('oyun').update({
+        eller:eller,kozlar:kozlar,skorlar:skorlar,alinan:alinan,ihale:{},herro:{},
+        ebe_idx:ebeIdx,buyuk_tur:1,sira:ilkSira,b_seri:'',yerde:[],
+        ihale_as:true,oyun_aktif:true,tur_bitti:false,ihale_toplam:0,el_no:0,durum:'basliyor'
+    }).eq('id',odaId);
+}
+
+function abone(){
+    if(subscription) subscription.unsubscribe();
+    subscription=sb.channel('oyun-'+odaId)
+        .on('postgres_changes',{event:'UPDATE',schema:'public',table:'oyun',filter:'id=eq.'+odaId},
+        function(payload){
+            oyunDurumu=payload.new;
+            if(oyunDurumu.oyun_aktif||oyunDurumu.durum==='basliyor'){
+                showScreen('game-screen');
+                render();
+                if((oyunDurumu.oyuncular||[])[0]===benimAdim) setTimeout(botKontrol,700);
+            } else {
+                beklemeCek();
+            }
+        }).subscribe();
+}
+
+/* KURAL */
+function gecerli(kart,el,mSeri,kozR,yer){
+    if(!mSeri) return true;
+    if(!el||!el.length) return false;
+    var ayni=el.filter(function(k){return k[0]===mSeri;});
+    var kozL=el.filter(function(k){return k[0]===kozR;});
+    if(ayni.length>0) return kart[0]===mSeri;
+    if(kozL.length>0){
+        if(kart[0]!==kozR) return false;
+        var maxV=-1;
+        yer.forEach(function(item){if(item[2]&&DS[item[1][1]]>maxV)maxV=DS[item[1][1]];});
+        if(maxV>=0){var byk=kozL.filter(function(k){return DS[k[1]]>maxV;});if(byk.length>0)return byk.some(function(k){return k[0]===kart[0]&&k[1]===kart[1];});}
+        return true;
+    }
+    return true;
+}
+function acikla(el,mSeri,kozR,yer){
+    if(!mSeri) return 'İlk kartı istediğiniz gibi atabilirsiniz.';
+    var ayni=el.filter(function(k){return k[0]===mSeri;});
+    var kozL=el.filter(function(k){return k[0]===kozR;});
+    if(ayni.length>0) return 'Elinizde '+mSeri+' var! Bu renkten atmak ZORUNDASINIZ.';
+    if(kozL.length>0){
+        var maxV=-1;
+        yer.forEach(function(item){if(item[2]&&DS[item[1][1]]>maxV)maxV=DS[item[1][1]];});
+        if(maxV>=0){var byk=kozL.filter(function(k){return DS[k[1]]>maxV;});if(byk.length>0)return 'Masada KOZ var! Daha büyük KOZ atmalısınız!';return 'Masada KOZ var ama daha büyüğünüz yok. Herhangi KOZ atın.';}
+        return 'Elinizde '+mSeri+' yok! KOZ atmak ZORUNDASINIZ!';
+    }
+    return 'Elinizde '+mSeri+' yok, KOZ da yok. İstediğiniz kartı atın.';
+}
+function sirala(el,koz){
+    var g={}; SUITS.forEach(function(s){g[s]=[];});
+    el.forEach(function(k){if(g[k[0]])g[k[0]].push(k);});
+    SUITS.forEach(function(s){g[s].sort(function(a,b){return DS[a[1]]-DS[b[1]];});});
+    var sMap={Kupa:['Kupa','Maca','Karo','Sinek'],Karo:['Karo','Sinek','Kupa','Maca'],Maca:['Maca','Kupa','Sinek','Karo'],Sinek:['Sinek','Karo','Maca','Kupa']};
+    var ord=sMap[koz]||SUITS; var r=[];
+    ord.forEach(function(s){r=r.concat(g[s]||[]);}); return r;
+}
+
+/* BOT */
+function botKontrol(){
+    if(!oyunDurumu||!oyunDurumu.oyun_aktif) return;
+    var d=oyunDurumu, sira=d.sira;
+    if(!sira||!sira.startsWith('🤖')||islemde) return;
+    if(d.ihale_as) setTimeout(function(){botIhaleYap(d);},500);
+    else setTimeout(function(){botOyna(d);},700);
+}
+async function botIhaleYap(d){
+    if(islemde) return; islemde=true;
+    var sira=d.sira, kozR=d.kozlar[sira], el=d.eller[sira]||[];
+    var res=botIhaleHesapla(el,kozR), val=res.val, isH=res.isHerro;
+    var oyuncular=d.oyuncular, ebeIdx=d.ebe_idx;
+    var yasak=(sira===oyuncular[ebeIdx])?(13-d.ihale_toplam):-1;
+    if(sira===oyuncular[ebeIdx]&&val===yasak) val=yasak>3?yasak-1:yasak+1;
+    if(sira===oyuncular[ebeIdx]&&d.ihale_toplam===0&&val===0) val=3;
+    var yeniIhale=Object.assign({},d.ihale); yeniIhale[sira]=val;
+    var yeniHerro=Object.assign({},d.herro); yeniHerro[sira]=isH;
+    var yeniToplam=d.ihale_toplam+val;
+    var sirali=[]; for(var i=0;i<4;i++) sirali.push(oyuncular[(ebeIdx+1+i)%4]);
+    var idx=sirali.indexOf(sira), guncel={};
+    log(sira+' → '+val+' ihale'+(isH?' ⚡':''));
+    if(idx+1<sirali.length){
+        guncel={ihale:yeniIhale,herro:yeniHerro,ihale_toplam:yeniToplam,sira:sirali[idx+1]};
+    } else {
+        var ilkOynayan=oyuncular[(ebeIdx+1)%4];
+        var yeniAlinan={}; oyuncular.forEach(function(o){yeniAlinan[o]=0;});
+        guncel={ihale:yeniIhale,herro:yeniHerro,ihale_toplam:yeniToplam,sira:ilkOynayan,ihale_as:false,yerde:[],b_seri:'',el_no:1,alinan:yeniAlinan};
+    }
+    await sb.from('oyun').update(guncel).eq('id',odaId);
+    islemde=false;
+}
+async function botOyna(d){
+    if(islemde) return; islemde=true;
+    var sira=d.sira, el=d.eller[sira]||[], yer=d.yerde||[], bSeri=d.b_seri||'', kozR=d.kozlar[sira];
+    var gec=el.filter(function(k){return gecerli(k,el,bSeri,kozR,yer);}); if(!gec.length) gec=el.slice();
+    var kalan=(d.ihale[sira]||0)-(d.alinan[sira]||0);
+    var kart;
+    if(kalan<=0||(d.ihale[sira]||0)===0){
+        var nk=gec.filter(function(k){return k[0]!==kozR;});
+        kart=(nk.length?nk:gec).reduce(function(a,b){return DS[a[1]]<DS[b[1]]?a:b;});
+    } else {
+        var kaz=gec.filter(function(k){return kartKazanirMi(k,yer,bSeri,kozR);});
+        if(kaz.length) kart=kaz.reduce(function(a,b){return DS[a[1]]<DS[b[1]]?a:b;});
+        else { var nk=gec.filter(function(k){return k[0]!==kozR;}); kart=(nk.length?nk:gec).reduce(function(a,b){return DS[a[1]]<DS[b[1]]?a:b;}); }
+    }
+    await kartOyna(d,sira,kart);
+    islemde=false;
+}
+function botIhaleHesapla(el,koz){
+    if(!el||!el.length) return {val:0,isHerro:false};
+    var kozL=el.filter(function(k){return k[0]===koz;}), kozSay=kozL.length;
+    var kd=kozL.map(function(k){return k[1];}), hasKozA=kd.indexOf('A')>-1, hasKozK=kd.indexOf('K')>-1;
+    var yanAs=0,yanK=0;
+    SUITS.forEach(function(s){if(s===koz)return;var c=el.filter(function(k){return k[0]===s;});if(c.some(function(k){return k[1]==='A';}))yanAs++;if(c.some(function(k){return k[1]==='K';}))yanK++;});
+    if(kozSay===0) return {val:0,isHerro:false};
+    if(kozSay<=2&&!hasKozA&&!hasKozK) return {val:0,isHerro:false};
+    var base=kozSay<=5?3:kozSay<=6?4:5;
+    var bonus=kozSay>=4?yanAs*0.7+yanK*0.4:0;
+    var fin=Math.max(3,Math.min(base+Math.round(bonus),11));
+    return {val:fin,isHerro:fin>=3&&kozSay>=4&&(hasKozA||hasKozK)&&yanAs>=1};
+}
+function kartKazanirMi(kart,yer,mSeri,kozR){
+    var sim=yer.concat([[null,kart,kart[0]===kozR&&mSeri&&mSeri!==kozR]]);
+    var kaz=elKazanan(sim,mSeri||kart[0]);
+    return kaz&&kaz.kart&&kaz.kart[0]===kart[0]&&kaz.kart[1]===kart[1];
+}
+function elKazanan(yer,acilisSeri){
+    if(!yer||!yer.length) return null;
+    var d=oyunDurumu; var kozR=d&&d.kozlar&&yer[0]&&d.kozlar[yer[0][0]]||'';
+    var wO=yer[0][0],wK=yer[0][1],wKoz=yer[0][2]||false;
+    for(var i=1;i<yer.length;i++){
+        var cO=yer[i][0],cK=yer[i][1],cKoz=yer[i][2]||false;
+        if(cKoz){if(wKoz){if(DS[cK[1]]>DS[wK[1]]){wO=cO;wK=cK;wKoz=cKoz;}}else{wO=cO;wK=cK;wKoz=cKoz;}}
+        else if(!wKoz){if(cK[0]===acilisSeri&&wK[0]===acilisSeri){if(DS[cK[1]]>DS[wK[1]]){wO=cO;wK=cK;}}else if(cK[0]===acilisSeri){wO=cO;wK=cK;}}
+    }
+    return {kart:wK,oyuncu:wO};
+}
+
+async function kartOyna(d,oyuncu,kart){
+    var eller=JSON.parse(JSON.stringify(d.eller));
+    var yer=JSON.parse(JSON.stringify(d.yerde||[]));
+    var bSeri=d.b_seri||'', kozR=d.kozlar[oyuncu], oyuncular=d.oyuncular;
+    var el=eller[oyuncu]||[];
+    var ri=el.findIndex(function(k){return k[0]===kart[0]&&k[1]===kart[1];});
+    if(ri!==-1) el.splice(ri,1); else{kart=el[0];el.splice(0,1);}
+    eller[oyuncu]=el;
+    if(!bSeri) bSeri=kart[0];
+    var cak=(kart[0]===kozR&&d.b_seri&&d.b_seri!==kozR);
+    yer.push([oyuncu,kart,cak]);
+    log(oyuncu+' → '+RS[kart[0]]+kart[1]+(cak?' (ÇAKMA)':''));
+    var guncel={eller:eller,yerde:yer,b_seri:bSeri};
+    if(yer.length===4){
+        var acilisSeri=yer[0][1][0];
+        var kaz=elKazanan(yer,acilisSeri);
+        var kazO=kaz?kaz.oyuncu:oyuncular[0];
+        var yeniAlinan=JSON.parse(JSON.stringify(d.alinan||{}));
+        yeniAlinan[kazO]=(yeniAlinan[kazO]||0)+1;
+        var yeniElNo=(d.el_no||0)+1;
+        log('El kazananı: '+kazO);
+        if(yeniElNo>13){
+            var skor=turSkorHesapla(d,yeniAlinan);
+            var yeniSkorlar=JSON.parse(JSON.stringify(d.skorlar||{}));
+            oyuncular.forEach(function(o){yeniSkorlar[o]=(yeniSkorlar[o]||0)+skor[o];});
+            var yeniBuyukTur=(d.buyuk_tur||1)+1;
+            if(yeniBuyukTur>12){
+                guncel=Object.assign(guncel,{alinan:yeniAlinan,yerde:[],b_seri:'',el_no:yeniElNo,sira:kazO,tur_bitti:true,skorlar:yeniSkorlar,oyun_aktif:false,durum:'bitti'});
+            } else {
+                guncel=Object.assign(guncel,{alinan:yeniAlinan,yerde:[],b_seri:'',el_no:yeniElNo,sira:kazO,tur_bitti:true,skorlar:yeniSkorlar,durum:'turbitti'});
+            }
+        } else {
+            guncel=Object.assign(guncel,{alinan:yeniAlinan,yerde:[],b_seri:'',el_no:yeniElNo,sira:kazO});
+        }
+    } else {
+        guncel.sira=oyuncular[(oyuncular.indexOf(oyuncu)+1)%4];
+    }
+    await sb.from('oyun').update(guncel).eq('id',odaId);
+}
+
+function turSkorHesapla(d,alinan){
+    var oyuncular=d.oyuncular, ebeIdx=d.ebe_idx, ihale=d.ihale||{}, herro=d.herro||{};
+    var cik=oyuncular.filter(function(o){return alinan[o]===(ihale[o]||0);});
+    var bat=oyuncular.filter(function(o){return alinan[o]!==(ihale[o]||0);});
+    var skor={};
+    oyuncular.forEach(function(o){
+        var s=ihale[o]||0,a=alinan[o]||0,fark=Math.abs(s-a),p=0;
+        if(cik.indexOf(o)>-1){var base=s===0?5:s;p=base;if(o===oyuncular[ebeIdx])p+=10;if(bat.length===3)p+=10;if(herro[o])p*=2;}
+        else{var base=s===0?5:s;p=-(base+(fark*fark));if(bat.length===1)p-=10;if(herro[o])p*=2;}
+        skor[o]=p; log(o+': '+s+'/'+a+' → '+(p>0?'+':'')+p);
+    });
+    return skor;
+}
+
+async function sendIhale(isH){
+    if(islemde) return;
+    var d=oyunDurumu, inp=document.getElementById('bNum');
+    var val=inp?parseInt(inp.value,10):0; if(isNaN(val))val=0;
+    var oyuncular=d.oyuncular, ebeIdx=d.ebe_idx;
+    var yasak=(d.sira===oyuncular[ebeIdx])?(13-d.ihale_toplam):-1;
+    var errDiv=document.getElementById('bErr');
+    function showE(msg){if(errDiv){errDiv.className='errmsg';errDiv.textContent=msg;}}
+    if(!isH&&val!==0&&(val<3||val>13)){showE('1-2 yasak! 0 veya 3-13 girin.');return;}
+    if(!isH&&d.sira===oyuncular[ebeIdx]&&val===yasak&&yasak>=0){showE('Yasak sayı!');return;}
+    if(!isH&&d.sira===oyuncular[ebeIdx]&&d.ihale_toplam===0&&val===0){showE('Açmak zorundasın!');return;}
+    islemde=true;
+    var yeniIhale=Object.assign({},d.ihale); yeniIhale[d.sira]=val;
+    var yeniHerro=Object.assign({},d.herro); yeniHerro[d.sira]=isH;
+    var yeniToplam=d.ihale_toplam+val;
+    var sirali=[]; for(var i=0;i<4;i++) sirali.push(oyuncular[(ebeIdx+1+i)%4]);
+    var idx=sirali.indexOf(d.sira), guncel={};
+    log(d.sira+' → '+val+' ihale'+(isH?' ⚡':''));
+    if(idx+1<sirali.length){
+        guncel={ihale:yeniIhale,herro:yeniHerro,ihale_toplam:yeniToplam,sira:sirali[idx+1]};
+    } else {
+        var ilkOynayan=oyuncular[(ebeIdx+1)%4];
+        var yeniAlinan={}; oyuncular.forEach(function(o){yeniAlinan[o]=0;});
+        guncel={ihale:yeniIhale,herro:yeniHerro,ihale_toplam:yeniToplam,sira:ilkOynayan,ihale_as:false,yerde:[],b_seri:'',el_no:1,alinan:yeniAlinan};
+    }
+    await sb.from('oyun').update(guncel).eq('id',odaId);
+    islemde=false;
+}
+
+async function cardClick(e){
+    if(islemde) return;
+    var cd=e.currentTarget, kart=[cd.dataset.suit,cd.dataset.rank], d=oyunDurumu;
+    if(!d||d.sira!==benimAdim) return;
+    var el=d.eller[benimAdim]||[];
+    if(!gecerli(kart,el,d.b_seri,d.kozlar[benimAdim],d.yerde||[])){
+        hataMesaji=acikla(el,d.b_seri,d.kozlar[benimAdim],d.yerde||[]);render();return;
+    }
+    hataMesaji=''; islemde=true;
+    await kartOyna(d,benimAdim,kart);
+    islemde=false;
+}
+function touchCard(e){e.preventDefault();cardClick(e);}
+
+function log(msg){
+    debugLogs.push(msg);
+    var div=document.getElementById('logArea');if(!div)return;
+    div.innerHTML=debugLogs.slice(-6).map(function(l){
+        var c=l.indexOf('HATA')>-1?'elog':l.indexOf('══')>-1?'sep':'';
+        return '<p class="'+c+'">'+l+'</p>';
+    }).join('');
+    div.scrollTop=div.scrollHeight;
+}
+
+function seatOf(o){
+    if(!oyunDurumu) return 'bottom';
+    var oyuncular=oyunDurumu.oyuncular||[];
+    var myIdx=oyuncular.indexOf(benimAdim), oIdx=oyuncular.indexOf(o);
+    if(myIdx<0||oIdx<0) return 'bottom';
+    return ['bottom','left','top','right'][(oIdx-myIdx+4)%4];
+}
+function kHTML(kart,koz){
+    var s=kart[0],r=kart[1],cls=(s==='Karo'||s==='Kupa')?'red-suit':'black-suit',sym=RS[s];
+    var dot=(koz&&s===koz)?'<div class="card-koz-dot">K</div>':'';
+    return dot+'<div class="card-corner '+cls+'">'+r+'<br>'+sym+'</div><div class="card-center '+cls+'">'+sym+'</div><div class="card-corner bot '+cls+'">'+r+'<br>'+sym+'</div>';
+}
+
+function render(){
+    var d=oyunDurumu; if(!d) return;
+    var oyuncular=d.oyuncular||[], ebeIdx=d.ebe_idx, sira=d.sira, yerde=d.yerde||[], bSeri=d.b_seri||'';
+    var isMyTurn=(!d.ihale_as&&d.oyun_aktif&&sira===benimAdim&&!d.tur_bitti);
+    var isMyIhale=(d.ihale_as&&sira===benimAdim);
+    document.getElementById('turn-indicator').textContent='Tur '+(d.buyuk_tur||1)+'/12  El '+(d.el_no||0);
+    document.getElementById('bid-total').textContent='İhale: '+(d.ihale_toplam||0);
+    var banner=document.getElementById('turn-banner');
+    if(isMyTurn||isMyIhale) banner.innerHTML='<div class="my-turn-banner">🎯 SENİN SIRAN!</div>';
+    else banner.innerHTML='<div class="wait-banner">⏳ '+sira+' oynuyor...</div>';
+
+    var sh='<div class="score-row hdr"><div class="sc pl">OYUNCU</div><div class="sc">KOZ</div><div class="sc">İHALE</div><div class="sc">ALINAN</div><div class="sc">SKOR</div></div>';
+    oyuncular.forEach(function(o){
+        var kR=d.kozlar[o]||'?',iV=d.ihale[o]!==undefined?d.ihale[o]:'-',hT=d.herro[o]?' ⚡':'';
+        var isEbe=(oyuncular.indexOf(o)===ebeIdx);
+        var eBadge=isEbe?'<span style="background:#8b0000;color:#ffd966;border-radius:20px;padding:0 5px;font-size:9px;font-weight:900;margin-left:3px;">EBE</span>':'';
+        var kStyle=kR!=='?'?'color:'+(kR==='Karo'||kR==='Kupa'?'#d42020':'#eee')+';font-size:clamp(13px,4vw,17px);font-weight:900;':'';
+        sh+='<div class="score-row'+(sira===o?' act':'')+'"><div class="sc pl">'+(o===benimAdim?'👤 ':'')+o+eBadge+'</div>'
+            +'<div class="sc"><span style="'+kStyle+'">'+(RS[kR]||'?')+'</span></div>'
+            +'<div class="sc">'+iV+hT+'</div><div class="sc">'+(d.alinan[o]||0)+'</div><div class="sc">'+((d.skorlar||{})[o]||0)+'</div></div>';
+    });
+    document.getElementById('score-panel').innerHTML=sh;
+
+    var yMap={top:null,left:null,right:null,bottom:null};
+    yerde.forEach(function(item){var pos=seatOf(item[0]);yMap[pos]={card:item[1],isKoz:item[2]};});
+    function feltCard(slot){
+        var dd=yMap[slot];if(!dd)return '<div class="felt-card-slot '+slot+'-slot"></div>';
+        var s=dd.card[0],r=dd.card[1],cls=(s==='Karo'||s==='Kupa')?'red-suit':'black-suit';
+        var kozTag=dd.isKoz?'<div class="pc-koz-tag">KOZ</div>':'';
+        return '<div class="felt-card-slot '+slot+'-slot"><div class="played-card"><div class="pc-val '+cls+'">'+RS[s]+r+'</div>'+kozTag+'</div></div>';
+    }
+    var feltCenter='';
+    if(bSeri){var bC=(bSeri==='Karo'||bSeri==='Kupa')?'red-suit':'black-suit';feltCenter='<div class="felt-center-info"><div class="felt-koz-sym '+bC+'">'+RS[bSeri]+'</div><div class="felt-koz-lbl">RENK</div></div>';}
+    else feltCenter='<div class="felt-center-info"><div style="font-size:10px;color:#ffd96666;font-weight:bold;">'+(d.ihale_as?'İHALE':'HERRO')+'</div></div>';
+
+    function seatBox(o){
+        var kR=d.kozlar[o]||'',iV=d.ihale[o]!==undefined?d.ihale[o]:'-';
+        var isEbe=(oyuncular.indexOf(o)===ebeIdx),isAct=(sira===o),isBot=o.startsWith('🤖');
+        var kStyle=kR?'color:'+(kR==='Karo'||kR==='Kupa'?'#d42020':'#eee')+';':'';
+        var cls='seat-box'+(isEbe?' ebe-seat':'')+(isBot?' bot-seat':'');
+        var turnDot=isAct?'<div class="seat-turn-arrow">▼</div>':'';
+        var isMe=(o===benimAdim);
+        return '<div class="'+cls+'">'+turnDot+'<div class="seat-name'+(isMe?' you':'')+'">'+o+'</div>'+(kR?'<div class="seat-koz" style="'+kStyle+'">'+RS[kR]+'</div>':'')+'<div class="seat-info">'+iV+'/'+(d.alinan[o]||0)+'</div></div>';
+    }
+
+    var myIdx=oyuncular.indexOf(benimAdim), myKoz=d.kozlar[benimAdim]||'', myEl=d.eller[benimAdim]||[];
+    var myCards=myEl.map(function(k){
+        var gc=isMyTurn&&bSeri?gecerli(k,myEl,bSeri,myKoz,yerde):true;
+        var ecls=isMyTurn?(gc?' valid-card':' invalid-card'):'';
+        return '<div class="card'+ecls+'" data-suit="'+k[0]+'" data-rank="'+k[1]+'">'+kHTML(k,myKoz)+'</div>';
+    }).join('');
+
+    document.getElementById('table-scene').innerHTML=''
+        +'<div class="outer-seat-row">'+seatBox(oyuncular[(myIdx+2)%4])+'</div>'
+        +'<div class="outer-mid-row">'+seatBox(oyuncular[(myIdx+1)%4])
+        +'<div class="felt-wrap"><div class="felt" id="felt-el"><div class="played-area">'+feltCard('top')+feltCard('left')+feltCenter+feltCard('right')+feltCard('bottom')+'</div></div></div>'
+        +seatBox(oyuncular[(myIdx+3)%4])+'</div>'
+        +'<div class="outer-seat-row">'+seatBox(oyuncular[myIdx])+'</div>'
+        +'<div class="my-cards-area"><div class="cards-wrap-single">'+myCards+'</div></div>';
+
+    if(isMyTurn){
+        document.querySelectorAll('.card[data-suit]').forEach(function(c){
+            c.addEventListener('click',cardClick);
+            c.addEventListener('touchend',touchCard,{passive:false});
+        });
+    }
+
+    if(d.durum==='bitti'){
+        var ent=Object.entries(d.skorlar||{}).sort(function(a,b){return b[1]-a[1];});
+        setTimeout(function(){alert('🏆 OYUN BİTTİ!\n\n'+ent.map(function(e,i){return (i+1)+'. '+e[0]+': '+e[1]+' puan';}).join('\n')+'\n\nKAZANAN: '+ent[0][0]+'!');},500);
+    }
+    renderInput();
+}
+
+function renderInput(){
+    var d=oyunDurumu; if(!d) return;
+    var p=document.getElementById('input-panel'), oyuncular=d.oyuncular||[], ebeIdx=d.ebe_idx;
+
+    if(d.tur_bitti&&d.durum!=='bitti'){
+        if(oyuncular[0]===benimAdim){
+            p.innerHTML='<button class="btn next" id="nextBtn">▶ Yeni Tur Başlat ('+(d.buyuk_tur||1)+'/12)</button>';
+            document.getElementById('nextBtn').onclick=async function(){
+                var yeniEbe=((d.ebe_idx||0)+1)%4;
+                var yeniDeste=[]; SUITS.forEach(function(s){Object.keys(DS).forEach(function(r){yeniDeste.push([s,r]);});});
+                for(var i=yeniDeste.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=yeniDeste[i];yeniDeste[i]=yeniDeste[j];yeniDeste[j]=t;}
+                var yeniEller={},yeniKozlar={},yeniAlinan={};
+                for(var i=0;i<4;i++){var o=oyuncular[i];yeniKozlar[o]=SUITS[i%4];yeniEller[o]=sirala(yeniDeste.slice(i*13,i*13+13),yeniKozlar[o]);yeniAlinan[o]=0;}
+                await sb.from('oyun').update({eller:yeniEller,kozlar:yeniKozlar,ihale:{},herro:{},alinan:yeniAlinan,yerde:[],b_seri:'',el_no:0,ebe_idx:yeniEbe,buyuk_tur:(d.buyuk_tur||1)+1,sira:oyuncular[(yeniEbe+1)%4],ihale_as:true,ihale_toplam:0,tur_bitti:false,oyun_aktif:true,durum:'basliyor'}).eq('id',odaId);
+            };
+        } else {
+            p.innerHTML='<div class="waitlbl">Tur bitti! '+oyuncular[0]+' yeni turu başlatacak...</div>';
+        }
+        return;
+    }
+    if(d.ihale_as&&d.sira===benimAdim){
+        var yasak=(d.sira===oyuncular[ebeIdx])?(13-d.ihale_toplam):-1;
+        var yH=(yasak>=0&&yasak<=13)?'<div class="warnmsg">Yasak sayı: '+yasak+'</div>':'';
+        p.innerHTML='<div class="ititle">İHALE</div><div style="font-size:13px;color:#b8c8b0;margin-bottom:6px;">Toplam: '+(d.ihale_toplam||0)+' | Ebe: '+oyuncular[ebeIdx]+'</div>'
+            +'<div class="bid-row"><input type="number" class="bid-num" id="bNum" min="0" max="13" value="3"><button class="btn" id="ihBtn">İHALE</button><button class="btn fire" id="hrBtn">HERRO</button></div>'+yH+'<div id="bErr"></div>';
+        document.getElementById('ihBtn').onclick=function(){sendIhale(false);};
+        document.getElementById('hrBtn').onclick=function(){sendIhale(true);};
+        return;
+    }
+    if(d.ihale_as&&d.sira!==benimAdim){p.innerHTML='<div class="waitlbl">⏳ '+d.sira+' ihale yapıyor...</div>';return;}
+    if(!d.ihale_as&&d.oyun_aktif&&d.sira===benimAdim&&!d.tur_bitti){
+        var hint=d.eller[benimAdim]?acikla(d.eller[benimAdim],d.b_seri,d.kozlar[benimAdim],d.yerde||[]):'';
+        p.innerHTML='<div class="ititle">Kartını Seç</div><div class="rhint">'+hint+'</div>'+(hataMesaji?'<div class="errmsg">'+hataMesaji+'</div>':'');
+        return;
+    }
+    if(!d.ihale_as&&d.oyun_aktif&&d.sira!==benimAdim){p.innerHTML='<div class="waitlbl">⏳ '+d.sira+' oynuyor...</div>';return;}
+    p.innerHTML='<div class="waitlbl">Bekleniyor...</div>';
+}
+</script>
+</body>
+</html>
