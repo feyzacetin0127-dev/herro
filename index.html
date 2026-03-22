@@ -492,9 +492,9 @@ async function kartOyna(d,oyuncu,kart){
                 oyuncular.forEach(function(o){yeniSkorlar[o]=(yeniSkorlar[o]||0)+skor[o];});
                 var yeniBuyukTur=(d.buyuk_tur||1)+1;
                 if(yeniBuyukTur>12){
-                    guncel2=Object.assign(guncel2,{tur_bitti:true,skorlar:yeniSkorlar,oyun_aktif:false,durum:'bitti'});
+                    guncel2=Object.assign(guncel2,{tur_bitti:true,skorlar:yeniSkorlar,oyun_aktif:false,durum:'bitti',yerde:[],b_seri:''});
                 } else {
-                    guncel2=Object.assign(guncel2,{tur_bitti:true,skorlar:yeniSkorlar,durum:'turbitti'});
+                    guncel2=Object.assign(guncel2,{tur_bitti:true,skorlar:yeniSkorlar,durum:'turbitti',yerde:[],b_seri:''});
                 }
             }
             await sb.from('oyun').update(guncel2).eq('id',odaId);
@@ -526,8 +526,8 @@ async function sendIhale(isH){
     var yasak=(d.sira===oyuncular[ebeIdx])?(13-d.ihale_toplam):-1;
     var errDiv=document.getElementById('bErr');
     function showE(msg){if(errDiv){errDiv.className='errmsg';errDiv.textContent=msg;}}
-    if(!isH&&val!==0&&(val<3||val>13)){showE('1-2 yasak! 0 veya 3-13 girin.');return;}
-    if(!isH&&d.sira===oyuncular[ebeIdx]&&val===yasak&&yasak>=0){showE('Yasak sayı!');return;}
+    if(!isH&&val!==0&&val!==1&&val!==2&&(val<3||val>13)){showE('Geçersiz sayı! 0, 1, 2 veya 3-13 girin.');return;}
+    if(!isH&&d.sira===oyuncular[ebeIdx]&&val===yasak&&yasak>=0){showE('Yasak sayı! Toplam 13 olamaz.');return;}
     if(!isH&&d.sira===oyuncular[ebeIdx]&&d.ihale_toplam===0&&val===0){showE('Açmak zorundasın!');return;}
     islemde=true;
     var yeniIhale=Object.assign({},d.ihale); yeniIhale[d.sira]=val;
@@ -671,7 +671,7 @@ function renderInput(){
                 for(var i=yeniDeste.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=yeniDeste[i];yeniDeste[i]=yeniDeste[j];yeniDeste[j]=t;}
                 var yeniEller={},yeniKozlar={},yeniAlinan={};
                 for(var i=0;i<4;i++){var o=oyuncular[i];yeniKozlar[o]=SUITS[i%4];yeniEller[o]=sirala(yeniDeste.slice(i*13,i*13+13),yeniKozlar[o]);yeniAlinan[o]=0;}
-                await sb.from('oyun').update({eller:yeniEller,kozlar:yeniKozlar,ihale:{},herro:{},alinan:yeniAlinan,yerde:[],b_seri:'',el_no:0,ebe_idx:yeniEbe,buyuk_tur:(d.buyuk_tur||1)+1,sira:oyuncular[(yeniEbe+1)%4],ihale_as:true,ihale_toplam:0,tur_bitti:false,oyun_aktif:true,durum:'basliyor'}).eq('id',odaId);
+                await sb.from('oyun').update({eller:yeniEller,kozlar:yeniKozlar,ihale:{},herro:{},alinan:yeniAlinan,yerde:[],b_seri:'',el_no:0,ebe_idx:yeniEbe,buyuk_tur:(d.buyuk_tur||1)+1,sira:oyuncular[(yeniEbe+1)%4],ihale_as:true,ihale_toplam:0,tur_bitti:false,oyun_aktif:true,durum:'basliyor',sira_bitis:null}).eq('id',odaId);
             };
         } else {
             p.innerHTML='<div class="waitlbl">Tur bitti! '+oyuncular[0]+' yeni turu başlatacak...</div>';
