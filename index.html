@@ -473,28 +473,41 @@ async function kartOyna(d,oyuncu,kart){
     yer.push([oyuncu,kart,cak]);
     log(oyuncu+' → '+RS[kart[0]]+kart[1]+(cak?' (ÇAKMA)':''));
     if(yer.length===4){
-        // 4. kartı göster (el_bekleniyor=true), herkes 1.5s sonra temizler
+        // Adım 1: 4. kartı herkese göster
         await sb.from('oyun').update({eller:eller,yerde:yer,b_seri:bSeri,durum:'el_bekleniyor'}).eq('id',odaId);
-        // Oda kurucusu 1.5s sonra masayı temizler
-        if((oyuncular[0]===benimAdim)||(oyuncu.startsWith('🤖'))){
+
+        // Sadece oda kurucusu (oyuncular[0]) veya bot oynattıysa 1.5s sonra hesapla
+        if(oyuncular[0]===benimAdim || oyuncu.startsWith('🤖')){
             await new Promise(function(r){setTimeout(r,1500);});
+
+            // Adım 2: Güncel veriyi DB'den çek (başka birinin güncellemiş olma ihtimaline karşı)
+            var {data:taze}=await sb.from('oyun').select('alinan,el_no,skorlar,buyuk_tur,ebe_idx,ihale,herro').eq('id',odaId).single();
+            if(!taze) return;
+
             var acilisSeri=yer[0][1][0];
             var kaz=elKazanan(yer,acilisSeri);
             var kazO=kaz?kaz.oyuncu:oyuncular[0];
-            var yeniAlinan=JSON.parse(JSON.stringify(d.alinan||{}));
+
+            // Güncel alinan üzerine ekle
+            var yeniAlinan=JSON.parse(JSON.stringify(taze.alinan||{}));
+            oyuncular.forEach(function(o){if(yeniAlinan[o]===undefined)yeniAlinan[o]=0;});
             yeniAlinan[kazO]=(yeniAlinan[kazO]||0)+1;
-            var yeniElNo=(d.el_no||0)+1;
-            log('El kazanı: '+kazO);
-            var guncel2={eller:eller,yerde:[],b_seri:'',el_no:yeniElNo,sira:kazO,alinan:yeniAlinan,durum:'basliyor'};
+            var yeniElNo=(taze.el_no||0)+1;
+            log('El kazananı: '+kazO+' (toplam:'+(yeniAlinan[kazO])+')');
+
+            var guncel2={yerde:[],b_seri:'',el_no:yeniElNo,sira:kazO,alinan:yeniAlinan,durum:'basliyor'};
+
             if(yeniElNo>13){
-                var skor=turSkorHesapla(d,yeniAlinan);
-                var yeniSkorlar=JSON.parse(JSON.stringify(d.skorlar||{}));
+                // Tur bitti — güncel skorlar üzerine ekle
+                var skorD={ihale:taze.ihale||{},herro:taze.herro||{},ebe_idx:taze.ebe_idx,oyuncular:oyuncular};
+                var skor=turSkorHesapla(skorD,yeniAlinan);
+                var yeniSkorlar=JSON.parse(JSON.stringify(taze.skorlar||{}));
                 oyuncular.forEach(function(o){yeniSkorlar[o]=(yeniSkorlar[o]||0)+skor[o];});
-                var yeniBuyukTur=(d.buyuk_tur||1)+1;
+                var yeniBuyukTur=(taze.buyuk_tur||1)+1;
                 if(yeniBuyukTur>12){
-                    guncel2=Object.assign(guncel2,{tur_bitti:true,skorlar:yeniSkorlar,oyun_aktif:false,durum:'bitti',yerde:[],b_seri:''});
+                    guncel2=Object.assign(guncel2,{tur_bitti:true,skorlar:yeniSkorlar,oyun_aktif:false,durum:'bitti'});
                 } else {
-                    guncel2=Object.assign(guncel2,{tur_bitti:true,skorlar:yeniSkorlar,durum:'turbitti',yerde:[],b_seri:''});
+                    guncel2=Object.assign(guncel2,{tur_bitti:true,skorlar:yeniSkorlar,durum:'turbitti'});
                 }
             }
             await sb.from('oyun').update(guncel2).eq('id',odaId);
