@@ -529,6 +529,8 @@ function lbOyunaGec(d){
     hataMesaji = '';
     donguCalisiyor = false;
     bekleniyor = false;
+    oynananKartlar = [];
+    renksizler = {};
 
     document.getElementById('lobby-screen').style.display='none';
     document.getElementById('game-screen').style.display='block';
@@ -560,18 +562,19 @@ function lbOyunaGec(d){
                 turBitti=true; render(); return;
             }
             render();
-            // el_bekleniyor: kartları göster, 1.5s sonra yerde'yi temizle
+            // el_bekleniyor: kartları göster, 1.5s sonra temizle
             if(d2.durum==='el_bekleniyor'){
+                bekleniyor=true;
                 setTimeout(function(){
                     yerde=[];
                     bSeri=null;
                     bekleniyor=false;
+                    donguCalisiyor=false;
                     render();
-                    // Host bu noktada zaten mpElBitti çalıştırıyor, bot kontrolü oradan devam eder
                 }, 1500);
                 return;
             }
-            // Bot kontrolü — sadece host çalıştırır
+            // Normal güncelleme
             bekleniyor=false;
             donguCalisiyor=false;
             if(OY[0]===BENIM_ADIM) setTimeout(mpBotKontrol,600);
