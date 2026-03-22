@@ -626,8 +626,8 @@ async function mpBotOyna(){
     donguCalisiyor = false;
     if(yerde.length===4){
         bekleniyor=true;
-        var guncel = {eller:eller, yerde:yerde, b_seri:bSeri};
-        await sb.from('oyun').update(guncel).eq('id',odaId);
+        // 4. kartı herkese göster
+        await sb.from('oyun').update({eller:eller, yerde:yerde, b_seri:bSeri, durum:'el_bekleniyor'}).eq('id',odaId);
         setTimeout(function(){ mpElBitti(); }, 1200);
     } else {
         sira = OY[(OY.indexOf(bot)+1)%4];
@@ -642,11 +642,22 @@ async function mpElBitti(){
     log('── El '+elNo+' kazananı: '+kaz+' (toplam: '+alinan[kaz]+') ──');
     var cakSayisi=yerde.filter(function(i){return i[2];}).length;
     if(cakSayisi>=2){ chatEkle(kaz,'Elini ayağını çek! ✋'); }
-    elNo++; sira=kaz; yerde=[]; bSeri=null; bekleniyor=false;
+    elNo++; sira=kaz; bekleniyor=false;
+    // Önce kazanan bandını göster, yerde DOLU kal
+    var felt=document.getElementById('felt-el');
+    if(felt){
+        var ban=document.createElement('div'); ban.className='winban'; ban.textContent='🏆 '+kaz;
+        felt.appendChild(ban);
+        setTimeout(function(){if(ban.parentNode)ban.parentNode.removeChild(ban);},1000);
+    }
+    // 1.2 saniye bekle, herkes görsün
+    await new Promise(function(r){setTimeout(r,1200);});
+    // Şimdi temizle
+    yerde=[]; bSeri=null;
     if(elNo>13){
         await mpTurBitir(); return;
     }
-    var guncel = {alinan:alinan, el_no:elNo, sira:sira, yerde:[], b_seri:''};
+    var guncel = {alinan:alinan, el_no:elNo, sira:sira, yerde:[], b_seri:'', durum:'basliyor'};
     await sb.from('oyun').update(guncel).eq('id',odaId);
 }
 
@@ -762,8 +773,9 @@ async function mpCardClick(e){
     if(isAcici&&!cak) sundurmeKontrol(BENIM_ADIM,kart);
     if(yerde.length===4){
         bekleniyor=true;
-        var guncel={eller:eller,yerde:yerde,b_seri:bSeri};
-        await sb.from('oyun').update(guncel).eq('id',odaId);
+        // 4. kartı herkese göster
+        await sb.from('oyun').update({eller:eller,yerde:yerde,b_seri:bSeri,durum:'el_bekleniyor'}).eq('id',odaId);
+        // Host el sonucunu hesaplar
         if(OY[0]===BENIM_ADIM){
             setTimeout(function(){ mpElBitti(); },1200);
         }
