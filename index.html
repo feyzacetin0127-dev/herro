@@ -574,6 +574,15 @@ function lbOyunaGec(d){
                 }, 1500);
                 return;
             }
+            // Yeni tur başladı - tüm state'i sıfırla
+            if(d2.durum==='yenitur'){
+                oynananKartlar=[];
+                renksizler={};
+                oncekiElKazanan=null;
+                oncekiElKazanRenk=null;
+                ayniRenkSeri=0;
+                hataMesaji='';
+            }
             // Normal güncelleme
             bekleniyor=false;
             donguCalisiyor=false;
@@ -617,7 +626,7 @@ async function mpBotIhale(){
         var ilkOynayan = OY[(ebeIdx+1)%4];
         var yeniAl={}; OY.forEach(function(o){yeniAl[o]=0;});
         guncel = {ihale:ihale, herro:herro, ihale_toplam:ihaleToplam, sira:ilkOynayan,
-                  ihale_as:false, yerde:[], b_seri:'', el_no:1, alinan:yeniAl};
+                  ihale_as:false, yerde:[], b_seri:'', el_no:0, alinan:yeniAl};
     }
     donguCalisiyor = false;
     await sb.from('oyun').update(guncel).eq('id',odaId);
@@ -734,13 +743,15 @@ async function mpTurBitir(){
     for(var i=0;i<OY.length;i++){
         yeniEller[OY[i]]=sirala(deste.slice(i*13,i*13+13),kozlar[OY[i]]);
         yeniAlinan[OY[i]]=0;
+        log(OY[i]+' → '+yeniEller[OY[i]].length+' kart dağıtıldı');
     }
-    var yeniSira = OY[(ebeIdx+1)%4]; // ebeIdx zaten artırıldı
+    var yeniSira = OY[(ebeIdx+1)%4];
+    log('══ TUR '+buyukTur+'/12 BAŞLADI ═══ Ebe:'+OY[ebeIdx]+' | İlk:'+yeniSira+' ══');
     var guncel={
         eller:yeniEller, kozlar:kozlar, ihale:{}, herro:{}, alinan:yeniAlinan,
         skorlar:skorlar, ebe_idx:ebeIdx, buyuk_tur:buyukTur, sira:yeniSira,
         b_seri:'', yerde:[], ihale_as:true, oyun_aktif:true, tur_bitti:false,
-        ihale_toplam:0, el_no:0, durum:'basliyor'
+        ihale_toplam:0, el_no:0, durum:'yenitur'
     };
     await sb.from('oyun').update(guncel).eq('id',odaId);
 }
@@ -767,7 +778,7 @@ async function mpSendIhale(isH){
         var ilkOynayan=OY[(ebeIdx+1)%4];
         var yeniAl={}; OY.forEach(function(o){yeniAl[o]=0;});
         guncel={ihale:ihale,herro:herro,ihale_toplam:ihaleToplam,sira:ilkOynayan,
-                ihale_as:false,yerde:[],b_seri:'',el_no:1,alinan:yeniAl};
+                ihale_as:false,yerde:[],b_seri:'',el_no:0,alinan:yeniAl};
     }
     await sb.from('oyun').update(guncel).eq('id',odaId);
 }
