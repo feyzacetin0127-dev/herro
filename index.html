@@ -560,6 +560,15 @@ function lbOyunaGec(d){
                 turBitti=true; render(); return;
             }
             render();
+            // el_bekleniyor: kartları göster, 1.5s sonra yerde'yi temizle ve tekrar render et
+            if(d2.durum==='el_bekleniyor'){
+                setTimeout(function(){
+                    yerde=[];
+                    bSeri=null;
+                    render();
+                }, 1500);
+                return;
+            }
             // Bot kontrolü — sadece host çalıştırır
             if(OY[0]===BENIM_ADIM) setTimeout(mpBotKontrol,600);
         }).subscribe();
